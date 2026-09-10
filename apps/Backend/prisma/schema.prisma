@@ -1,0 +1,152 @@
+// User
+model User {
+  id        Int       @id @default(autoincrement())
+  name      String
+  email     String    @unique
+  password  String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  attempts  Attempt[]
+
+  @@index([email])
+}
+
+// Problem
+model Problem {
+  id                Int        @id @default(autoincrement())
+  title             String
+  description       String     @db.Text
+  difficulty        Difficulty
+  category          String     @default("LLD")
+  requirements      String     @db.Text
+  constraints       String?    @db.Text
+  expectedBehavior  String?    @db.Text
+  sampleSolution    String?    @db.Text
+  starterCode       String?    @db.Text
+  evaluationRules   Json?
+  testCases         Json?
+  executionContract Json?
+  estimatedTime     Int?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  attempts          Attempt[]
+  
+  @@index([difficulty])
+  @@index([category])
+}
+
+// Attempt
+model Attempt {
+  id            Int           @id @default(autoincrement())
+  attemptNumber Int
+  status        AttemptStatus @default(IN_PROGRESS)
+
+  userId        Int
+  problemId     Int
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem       Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  submission    Submission?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([problemId])
+  @@index([userId, problemId])
+  @@index([userId, createdAt])
+  @@index([status])
+  @@unique([userId, problemId, attemptNumber])
+}
+
+// Submission
+model Submission {
+  id               Int              @id @default(autoincrement())
+  attemptId        Int              @unique
+  status           SubmissionStatus @default(PENDING)
+  code             String           @db.Text
+  codeSize         Int
+  meaningfulLines  Int?
+  classCount       Int?
+  methodCount      Int?
+  placeholderCount Int?
+  language         String
+  explanation      String           @db.Text
+  submittedAt      DateTime         @default(now())
+
+  attempt          Attempt          @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  evaluation       Evaluation?
+}
+
+// Evaluation
+model Evaluation {
+  id                  Int              @id @default(autoincrement())
+  submissionId        Int              @unique
+  status              EvaluationStatus @default(PENDING)
+
+  score               Float?
+  responsibilityScore Float?
+  abstractionScore    Float?
+  extensibilityScore  Float?
+  designPatternScore  Float?
+  codeQualityScore    Float?
+
+  strengths           String?          @db.Text
+  weaknesses          String?          @db.Text
+  suggestions         String?          @db.Text
+
+  error               String?          @db.Text
+  retryCount          Int              @default(0)
+  aiModel             String?
+  evaluationTime      Int?
+  createdAt           DateTime         @default(now())
+  evaluatedAt         DateTime?
+
+  submission          Submission       @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// Difficulty
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// AttemptStatus
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+  EVALUATING
+  COMPLETED
+  FAILED
+}
+
+// SubmissionStatus
+enum SubmissionStatus {
+  PENDING
+  VALID
+  INVALID
+  EVALUATED
+}
+
+// EvaluationStatus
+enum EvaluationStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY_SCHEDULED
+}
+
+// Prisma Client
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Database
+datasource db {
+  provider = "postgresql"
+}
